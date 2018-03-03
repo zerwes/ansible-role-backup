@@ -57,7 +57,7 @@
 
 # backup client tasks
 
-- name: Configure SSH
+- name: add ssh key of backup_server w/ command arg
   authorized_key:
     user: root
     key: "{{ lookup('file', 'id_rsa.pub') }}"
