@@ -1,0 +1,75 @@
+#!/bin/bash
+
+#
+# {{ ansible_managed }}
+#
+# simple linux backup script using rsync
+#
+
+declare -i EXITCODE=0
+declare -r LOGFILE=/var/log/$(basename $0)
+
+declare -r SERVICES="{{ backup_client_services | join(' ') }}"
+declare -r DATABASES="{{ backup_client_databases | join(' ') }}"
+
+if [ -z "${SSH_CLIENT}" -o -z "${SSH_CONNECTION}" -o -z "${SSH_ORIGINAL_COMMAND}" -o "${SSH_ORIGINAL_COMMAND:0:6}" != "rsync " ]; then
+        echo "please run this only via rsync / ssh"
+        exit 1
+fi
+
+
+[ -f "$LOGFILE" ] && mv "$LOGFILE" "$LOGFILE.old"
+>"$LOGFILE"
+
+
+# stop services
+for serv in $SERVICES; do
+	service $serv stop >> "$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after 'service $serv stop'" >>"$LOGFILE"
+done
+
+# databases
+mkdir -p /var/tmp/backup-databases
+for db in $DATABASES; do
+	mysqldump --single-transaction $db > /var/tmp/backup-databases/$db.sql 2>>"$LOGFILE"
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after 'mysqldump --single-transaction $db'" >>"$LOGFILE"
+done
+
+{% if backup_client_exec_pre is defined %}
+{% for pattern in backup_client_exec_pre %}
+	{{ pattern }} >> "$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after '"'{{ pattern }}'"'" >>"$LOGFILE"
+{% endfor %}
+{% endif %}
+
+
+# real backup
+# you can test the sending command by running
+#  rsync -avz -e'ssh -v'  --delete root@srv:/etc/ root@srv:/.../ /tmp/x/ 2>&1 | grep "Sending command"
+rsync --server --sender -vlogDtprze.iLsfxC . \
+  {{ backup_client_dirs | join(' ') }} /var/tmp/backup-databases 2>>"$LOGFILE"
+EXITCODE=$((EXITCODE+$?))
+echo "EXITCODE=$EXITCODE after rsync" >>"$LOGFILE"
+
+rm -rf /var/tmp/backup-databases >>"$LOGFILE" 2>&1
+# start services
+for serv in $SERVICES; do
+	service $serv start >> "$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after 'service $serv start'" >>"$LOGFILE"
+done
+
+{% if backup_client_exec_post is defined %}
+{% for pattern in backup_client_exec_post %}
+	{{ pattern }} >> "$LOGFILE" 2>&1
+	echo "EXITCODE=$EXITCODE after '"'{{ pattern }}'"'" >>"$LOGFILE"
+{% endfor %}
+{% endif %}
+
+
+echo "final EXITCODE=$EXITCODE" >>"$LOGFILE"
+
+exit $EXITCODE

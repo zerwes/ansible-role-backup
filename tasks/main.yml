@@ -1,0 +1,68 @@
+---
+
+- name: ensure necessary packages are installed
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - ssh
+    - rsync
+
+# backup server tasks
+
+- name: generate SSH key for root
+  user:
+    name: root
+    generate_ssh_key: yes
+    ssh_key_file: "{{ backup_server_path_sshkey }}"
+  when: backup_server
+
+- name: fetch public SSH key to backup client role
+  fetch:
+    src: "{{ backup_server_path_sshkey }}.pub"
+    dest: roles/backup/files/id_rsa.pub
+    flat: yes
+  when: backup_server
+
+- name: set backup clients as known hosts
+  known_hosts:
+    path: /root/.ssh/known_hosts
+    name: "{{ item }}"
+    key:  "{{ lookup('pipe', 'ssh-keyscan -t ssh-rsa ' + item ) }}"
+  with_items:
+    - "{{ groups['backup_client'] }}"
+  when: backup_server
+
+- name: add backup server script
+  template:
+    src: backup_server.j2
+    dest: /usr/local/sbin/backup_server
+    owner: root
+    group: root
+    mode: 0755
+  when: backup_server
+
+- name: add cron.d entry
+  cron:
+    name: ansible managed backup_server
+    cron_file: "{{ backup_server_cron.cron_file }}"
+    minute: "{{ backup_server_cron.minute }}"
+    hour: "{{ backup_server_cron.hour }}"
+    day: "{{ backup_server_cron.day }}"
+    month: "{{ backup_server_cron.month }}"
+    weekday: "{{ backup_server_cron.weekday }}"
+    user: "{{ backup_server_cron.user }}"
+    job: "{{ backup_server_cron.job }}"
+  when: backup_server
+
+# backup client tasks
+
+- name: Configure SSH
+  authorized_key:
+    user: root
+    key: "{{ lookup('file', 'id_rsa.pub') }}"
+    key_options: command="/usr/local/sbin/backup_client"
+  when: backup_client_dirs | default([])
+
+# TODO: checkmk local check for backup status
+
