@@ -20,7 +20,9 @@ mkdir -p "$LOGDIR"
 [ -f "$LOGDIR/{{ host }}.log" ] && mv "$LOGDIR/{{ host }}.log" "$LOGDIR/{{ host }}.log.1"
 > "$LOGDIR/{{ host }}.log"
 # will backup: {{ backup_client_dirs | join(' ') }}
-logger -s -t backup "Starting backup of {{ host }} @ $(date)" | tee -a "$LOGDIR/{{ host }}.log"
+lmsg="Starting backup of {{ host }} @ $(date)"
+logger -s -t backup "$lmsg"
+echo "$lmsg" >> "$LOGDIR/{{ host }}.log"
 rsync -avz -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded \
 	{% for excl in hostvars[host].backup_client_exclude | default([]) -%}
 	--exclude='{{excl}}' \
@@ -31,7 +33,9 @@ rsync -avz -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded
 	--exclude='/*' \
 	{{ host }}:/ {{ backup_server_path_local }}/{{ host }}/ >>"$LOGDIR/{{ host }}.log" 2>&1
 RET=$?
-logger -s -t backup "Finished backup of {{ host }} @ $(date) with exit code $RET" | tee -a "$LOGDIR/{{ host }}.log"
+lmsg="Finished backup of {{ host }} @ $(date) with exit code $RET"
+logger -s -t backup "$lmsg"
+echo "$lmsg" >> "$LOGDIR/{{ host }}.log"
 
 # rotate count: {{ hostvars[host].backup_client_rotatecount_daily | default(0) }}
 echo "{{ host }}: $RET" >> $STATUSFILE
