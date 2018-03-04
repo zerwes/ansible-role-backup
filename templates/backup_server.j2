@@ -117,8 +117,8 @@ if [ $ROTATE_MONTHLY -gt 0 ]; then
     fi
 fi
 
-# will backup: {{ backup_client_dirs | join(' ') }}
 logmsg "Starting backup of {{ host }} @ $(date)"
+logmsg "will backup: {{ hostvars[host].backup_client_dirs | join(' ') }} ..."
 rsync -avz -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded \
     {% for excl in hostvars[host].backup_client_exclude | default([]) -%}
     --exclude='{{excl}}' \
