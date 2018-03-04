@@ -86,7 +86,7 @@ mkdir -p "$LOGDIR"
 # host: {{ host }}
 ############################
 LOGFILE="$LOGDIR/{{ host }}.log"
-[ -f "$LOGFILE" ] && mv "$LOGFILE" "$LOGFILE.1"
+[ -f "$LOGFILE" ] && cp "$LOGFILE" "$LOGFILE.1"
 > "$LOGFILE"
 
 # rotate host {{ host }}
