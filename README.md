@@ -80,6 +80,4 @@ backup_client_rotate_monthly_day: 1 # -1=last day of month
 # TODOs / FIXMEs
 
 - [ ] mysql dump: make user / pw configurable
-- [ ] if DBs are listed, include the DB dump dir
-- [ ] rotation
 - [ ] check mk local check
