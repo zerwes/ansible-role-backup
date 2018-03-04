@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4 smartindent nu
+
 # {{ ansible_managed }}
 #
 # simple shell script to backup data from several hosts via rsync and ssh
@@ -9,6 +11,70 @@ declare -i RET=0
 declare -r STATUSFILE="{{ backup_server_path_status }}"
 declare -r LOGDIR="{{ backup_server_path_logdir }}"
 
+# will be set per host
+declare LOGFILE="/dev/null"
+
+# dorotate dir daily|weekly|monthly rotatecountarray
+function dorotate() {
+    # check args
+    if [ -z "$1" ]; then
+        echo "function dorotate is missing dir as first arg"
+        exit 3
+    fi
+    local -r ROTATEDIR="$1"
+    [ -d "$ROTATEDIR" ] || return
+
+    if [ -z "$2" ]; then
+        echo "function dorotate is missing method as second arg"
+        exit 3
+    fi
+    local -r ROTATEMETHOD=$2
+
+    if [ -z "$3" ]; then
+        echo "function dorotate is missing backup count as third arg"
+        exit 3
+    fi
+    declare -ri ROTATE=$3
+    if [ $ROTATE -eq 0 ]; then
+        echo "skip $ROTATEDIR $ROTATEMETHOD as count is $ROTATE"
+        return
+    fi
+
+    local -a ROTATECOUNT=($(seq $ROTATE -1 1))
+    length=${#ROTATECOUNT[@]}
+    [ $length -eq 0 ] && return
+
+    echo "dorotate: $ROTATEDIR $ROTATEMETHOD ..." >> "${LOGFILE}"
+    echo "dorotate: Max items: $length" >> "${LOGFILE}"
+
+    # delete older backup dirs
+    echo "dorotate: deleting older backups of type $ROTATEMETHOD " >> "${LOGFILE}"
+    older=$length
+    while [ -d "${ROTATEDIR}.${ROTATEMETHOD}.$older" ]; do
+      rm -rfv "${ROTATEDIR}.${ROTATEMETHOD}.$older" >> "${LOGFILE}" 2>&1
+      ((older++))
+    done
+    rm -rfv "${ROTATEDIR}.${ROTATEMETHOD}.$ROTATECOUNT" >> "${LOGFILE}" 2>&1
+
+    # rotate up
+    echo "dorotate: incrementing backup of type $ROTATEMETHOD " >> "${LOGFILE}"
+    for i in ${ROTATECOUNT[@]}; do
+        if [ -d "${ROTATEDIR}.${ROTATEMETHOD}.${i}" ]; then
+            mv -v "${ROTATEDIR}.${ROTATEMETHOD}.${i}" "${ROTATEDIR}.${ROTATEMETHOD}.$(( ${i} + 1 ))" >> "${LOGFILE}" 2>&1
+        fi
+    done
+    cp -alu -v "${ROTATEDIR}" "${ROTATEDIR}.${ROTATEMETHOD}.1" >> "${LOGFILE}" 2>&1
+
+    echo "dorotate: $ROTATEDIR $ROTATEMETHOD DONE" >> ${LOGFILE}
+}
+
+# will log to syslog + stderr + host log file
+function logmsg() {
+    local -r lmsg="$*"
+    logger -s -t backup "$lmsg"
+    echo "$lmsg" >> "$LOGFILE"
+}
+
 > $STATUSFILE
 mkdir -p "$LOGDIR"
 
@@ -17,27 +83,54 @@ mkdir -p "$LOGDIR"
 ############################
 # host: {{ host }}
 ############################
-[ -f "$LOGDIR/{{ host }}.log" ] && mv "$LOGDIR/{{ host }}.log" "$LOGDIR/{{ host }}.log.1"
-> "$LOGDIR/{{ host }}.log"
-# will backup: {{ backup_client_dirs | join(' ') }}
-lmsg="Starting backup of {{ host }} @ $(date)"
-logger -s -t backup "$lmsg"
-echo "$lmsg" >> "$LOGDIR/{{ host }}.log"
-rsync -avz -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded \
-	{% for excl in hostvars[host].backup_client_exclude | default([]) -%}
-	--exclude='{{excl}}' \
-	{% endfor -%}
-	{% for incl in hostvars[host].backup_client_dirs -%}
-	--include='{{incl}}' \
-	{% endfor -%}
-	--exclude='/*' \
-	{{ host }}:/ {{ backup_server_path_local }}/{{ host }}/ >>"$LOGDIR/{{ host }}.log" 2>&1
-RET=$?
-lmsg="Finished backup of {{ host }} @ $(date) with exit code $RET"
-logger -s -t backup "$lmsg"
-echo "$lmsg" >> "$LOGDIR/{{ host }}.log"
+LOGFILE="$LOGDIR/{{ host }}.log"
+[ -f "$LOGFILE" ] && mv "$LOGFILE" "$LOGFILE.1"
+> "$LOGFILE"
 
-# rotate count: {{ hostvars[host].backup_client_rotatecount_daily | default(0) }}
+# rotate host {{ host }}
+declar -i ROTATE_DAILY={{ hostvars[host].backup_client_rotatecount_daily | default(0) }}
+if [ $ROTATE_DAILY -gt 0 ]; then
+    logmsg "{{ host }}: ROTATE_DAILY=$ROTATE_DAILY"
+    dorotate "{{ backup_server_path_local }}/{{ host }}" daily $ROTATE_DAILY
+fi
+declar -i ROTATE_WEEKLY={{ hostvars[host].backup_client_rotatecount_weekly | default(0) }}
+if [ $ROTATE_WEEKLY -gt 0 -a $(date +"%w") -eq {{ hostvars[host].backup_client_rotate_weekly_day }} ]; then
+    logmsg "{{ host }}: ROTATE_WEEKLY=$ROTATE_WEEKLY"
+    dorotate "{{ backup_server_path_local }}/{{ host }}" weekly $ROTATE_WEEKLY
+fi
+declar -i ROTATE_MONTHLY={{ hostvars[host].backup_client_rotatecount_monthly | default(0) }}
+if [ $ROTATE_MONTHLY -gt 0 ]; then
+    declare -i MDAYDO={{ hostvars[host].backup_client_rotate_monthly_day | default(1) }}
+    declare -i MDAY=$(date +"%e")
+    if [ $MDAYDO -gt 0 -a $MDAY -eq $MDAYDO ]; then
+        logmsg "{{ host }}: ROTATE_MONTHLY=$ROTATE_MONTHLY on $MDAY day of month"
+        dorotate "{{ backup_server_path_local }}/{{ host }}" monthly $ROTATE_MONTHLY
+    elif [ $MDAYDO -eq -1 ]; then
+        # tomorrow's day of month
+        declare -i MDAYT=$(date +"%e" -d "1 day")
+        if [ $MDAYT -lt $MDAY ]; then
+            logmsg "{{ host }}: ROTATE_MONTHLY=$ROTATE_MONTHLY on last day of month"
+            dorotate "{{ backup_server_path_local }}/{{ host }}" monthly $ROTATE_MONTHLY
+        fi
+    fi
+fi
+
+# will backup: {{ backup_client_dirs | join(' ') }}
+logmsg "Starting backup of {{ host }} @ $(date)"
+rsync -avz -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded \
+    {% for excl in hostvars[host].backup_client_exclude | default([]) -%}
+    --exclude='{{excl}}' \
+    {% endfor -%}
+    {% for incl in hostvars[host].backup_client_dirs -%}
+    --include='{{incl}}' \
+    {% endfor -%}
+    {% if hostvars[host].backup_client_databases | default([]) -%}
+    --include=/var/tmp/backup-databases \
+    {% endif -%}
+    --exclude='/*' \
+    {{ host }}:/ {{ backup_server_path_local }}/{{ host }}/ >>"$LOGFILE" 2>&1
+RET=$?
+logmsg "Finished backup of {{ host }} @ $(date) with exit code $RET"
 echo "{{ host }}: $RET" >> $STATUSFILE
 {% endif %}
 {% endfor %}
