@@ -88,17 +88,17 @@ LOGFILE="$LOGDIR/{{ host }}.log"
 > "$LOGFILE"
 
 # rotate host {{ host }}
-declar -i ROTATE_DAILY={{ hostvars[host].backup_client_rotatecount_daily | default(0) }}
+declare -i ROTATE_DAILY={{ hostvars[host].backup_client_rotatecount_daily | default(0) }}
 if [ $ROTATE_DAILY -gt 0 ]; then
     logmsg "{{ host }}: ROTATE_DAILY=$ROTATE_DAILY"
     dorotate "{{ backup_server_path_local }}/{{ host }}" daily $ROTATE_DAILY
 fi
-declar -i ROTATE_WEEKLY={{ hostvars[host].backup_client_rotatecount_weekly | default(0) }}
+declare -i ROTATE_WEEKLY={{ hostvars[host].backup_client_rotatecount_weekly | default(0) }}
 if [ $ROTATE_WEEKLY -gt 0 -a $(date +"%w") -eq {{ hostvars[host].backup_client_rotate_weekly_day | default(0) }} ]; then
     logmsg "{{ host }}: ROTATE_WEEKLY=$ROTATE_WEEKLY"
     dorotate "{{ backup_server_path_local }}/{{ host }}" weekly $ROTATE_WEEKLY
 fi
-declar -i ROTATE_MONTHLY={{ hostvars[host].backup_client_rotatecount_monthly | default(0) }}
+declare -i ROTATE_MONTHLY={{ hostvars[host].backup_client_rotatecount_monthly | default(0) }}
 if [ $ROTATE_MONTHLY -gt 0 ]; then
     declare -i MDAYDO={{ hostvars[host].backup_client_rotate_monthly_day | default(1) }}
     declare -i MDAY=$(date +"%e")
