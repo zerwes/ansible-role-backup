@@ -41,31 +41,31 @@ function dorotate() {
     fi
 
     local -a ROTATECOUNT=($(seq $ROTATE -1 1))
-    length=${#ROTATECOUNT[@]}
+    length={% raw -%}${#ROTATECOUNT[@]}{% endraw -%}
     [ $length -eq 0 ] && return
 
-    echo "dorotate: $ROTATEDIR $ROTATEMETHOD ..." >> "${LOGFILE}"
-    echo "dorotate: Max items: $length" >> "${LOGFILE}"
+    echo "dorotate: $ROTATEDIR $ROTATEMETHOD ..." >> "$LOGFILE"
+    echo "dorotate: Max items: $length" >> "$LOGFILE"
 
     # delete older backup dirs
-    echo "dorotate: deleting older backups of type $ROTATEMETHOD " >> "${LOGFILE}"
+    echo "dorotate: deleting older backups of type $ROTATEMETHOD " >> "$LOGFILE"
     older=$length
-    while [ -d "${ROTATEDIR}.${ROTATEMETHOD}.$older" ]; do
-      rm -rfv "${ROTATEDIR}.${ROTATEMETHOD}.$older" >> "${LOGFILE}" 2>&1
+    while [ -d "$ROTATEDIR.$ROTATEMETHOD.$older" ]; do
+      rm -rfv "$ROTATEDIR.$ROTATEMETHOD.$older" >> "$LOGFILE" 2>&1
       ((older++))
     done
-    rm -rfv "${ROTATEDIR}.${ROTATEMETHOD}.$ROTATECOUNT" >> "${LOGFILE}" 2>&1
+    rm -rfv "$ROTATEDIR.$ROTATEMETHOD.$ROTATECOUNT" >> "$LOGFILE" 2>&1
 
     # rotate up
-    echo "dorotate: incrementing backup of type $ROTATEMETHOD " >> "${LOGFILE}"
+    echo "dorotate: incrementing backup of type $ROTATEMETHOD " >> "$LOGFILE"
     for i in ${ROTATECOUNT[@]}; do
-        if [ -d "${ROTATEDIR}.${ROTATEMETHOD}.${i}" ]; then
-            mv -v "${ROTATEDIR}.${ROTATEMETHOD}.${i}" "${ROTATEDIR}.${ROTATEMETHOD}.$(( ${i} + 1 ))" >> "${LOGFILE}" 2>&1
+        if [ -d "$ROTATEDIR.$ROTATEMETHOD.${i}" ]; then
+            mv -v "$ROTATEDIR.$ROTATEMETHOD.${i}" "$ROTATEDIR.$ROTATEMETHOD.$(( ${i} + 1 ))" >> "$LOGFILE" 2>&1
         fi
     done
-    cp -alu -v "${ROTATEDIR}" "${ROTATEDIR}.${ROTATEMETHOD}.1" >> "${LOGFILE}" 2>&1
+    cp -alu -v "$ROTATEDIR" "$ROTATEDIR.$ROTATEMETHOD.1" >> "$LOGFILE" 2>&1
 
-    echo "dorotate: $ROTATEDIR $ROTATEMETHOD DONE" >> ${LOGFILE}
+    echo "dorotate: $ROTATEDIR $ROTATEMETHOD DONE" >> $LOGFILE
 }
 
 # will log to syslog + stderr + host log file
@@ -94,7 +94,7 @@ if [ $ROTATE_DAILY -gt 0 ]; then
     dorotate "{{ backup_server_path_local }}/{{ host }}" daily $ROTATE_DAILY
 fi
 declar -i ROTATE_WEEKLY={{ hostvars[host].backup_client_rotatecount_weekly | default(0) }}
-if [ $ROTATE_WEEKLY -gt 0 -a $(date +"%w") -eq {{ hostvars[host].backup_client_rotate_weekly_day }} ]; then
+if [ $ROTATE_WEEKLY -gt 0 -a $(date +"%w") -eq {{ hostvars[host].backup_client_rotate_weekly_day | default(0) }} ]; then
     logmsg "{{ host }}: ROTATE_WEEKLY=$ROTATE_WEEKLY"
     dorotate "{{ backup_server_path_local }}/{{ host }}" weekly $ROTATE_WEEKLY
 fi
@@ -125,7 +125,7 @@ rsync -avz -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded
     --include='{{incl}}' \
     {% endfor -%}
     {% if hostvars[host].backup_client_databases | default([]) -%}
-    --include=/var/tmp/backup-databases \
+    --include=/var/tmp/backup-databases/ \
     {% endif -%}
     --exclude='/*' \
     {{ host }}:/ {{ backup_server_path_local }}/{{ host }}/ >>"$LOGFILE" 2>&1
