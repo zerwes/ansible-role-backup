@@ -50,7 +50,7 @@ done
 # you can test the sending command by running
 #  rsync -avz -e'ssh -v'  --delete root@srv:/etc/ root@srv:/.../ /tmp/x/ 2>&1 | grep "Sending command"
 rsync --server --sender -vlogDtprze.iLsfxC . \
-  {{ backup_client_dirs | join(' ') }} /var/tmp/backup-databases 2>>"$LOGFILE"
+  {{ backup_client_dirs | join(' ') }}{% if backup_client_databases -%} /var/tmp/backup-databases {% endif -%} 2>>"$LOGFILE"
 EXITCODE=$((EXITCODE+$?))
 echo "EXITCODE=$EXITCODE after rsync" >>"$LOGFILE"
 
