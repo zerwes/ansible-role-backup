@@ -64,5 +64,13 @@
     key_options: command="/usr/local/sbin/backup_client"
   when: backup_client_dirs | default([])
 
-# TODO: checkmk local check for backup status
+- name: add backup client command script
+  template:
+    src: backup_client.j2
+    dest: /usr/local/sbin/backup_client
+    owner: root
+    group: root
+    mode: 0700
+  when: backup_client_dirs | default([])
 
+# vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2 smartindent nu

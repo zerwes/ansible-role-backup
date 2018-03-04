@@ -29,7 +29,7 @@ rsync -avz -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded
 	--include='{{incl}}' \
 	{% endfor -%}
 	--exclude='/*' \
-	{{ host }}:/ {{ backup_server_path_local }}/{{ host }}/ >"$LOGDIR/{{ host }}.log" 2>&1
+	{{ host }}:/ {{ backup_server_path_local }}/{{ host }}/ >>"$LOGDIR/{{ host }}.log" 2>&1
 RET=$?
 logger -s -t backup "Finished backup of {{ host }} @ $(date) with exit code $RET" | tee -a "$LOGDIR/{{ host }}.log"
 
