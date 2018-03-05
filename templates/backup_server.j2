@@ -7,6 +7,9 @@
 # simple shell script to backup data from several hosts via rsync and ssh
 #
 
+# do NOT use the agent of a user with agent forwarding
+unset SSH_AUTH_SOCK
+
 declare -i RET=0
 declare -r STATUSFILE="{{ backup_server_path_status }}"
 declare -r LOGDIR="{{ backup_server_path_logdir }}"
