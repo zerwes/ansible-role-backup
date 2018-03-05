@@ -30,6 +30,9 @@ backup_server_cron:
 # list of directories to backup
 backup_client_dirs: []
 
+# list of pattern to use as --include= arg
+backup_client_include: []
+
 # list of pattern to use as --exclude= arg
 backup_client_exclude: []
 

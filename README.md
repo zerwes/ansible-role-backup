@@ -54,6 +54,9 @@ backup_client_dirs:
   - /etc/
   - /srv/
 
+# list of pattern to use as --include= arg
+backup_client_include: []
+
 # list of pattern to use as --exclude= arg
 backup_client_exclude: []
 
@@ -81,3 +84,5 @@ backup_client_rotate_monthly_day: 1 # -1=last day of month
 
 - [ ] mysql dump: make user / pw configurable
 - [ ] check mk local check
+- [ ] test exclude / include args (esp. regarding the "Sending command"
+

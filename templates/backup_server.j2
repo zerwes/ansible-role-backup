@@ -118,19 +118,24 @@ if [ $ROTATE_MONTHLY -gt 0 ]; then
 fi
 
 logmsg "Starting backup of {{ host }} @ $(date)"
-logmsg "will backup: {{ hostvars[host].backup_client_dirs | join(' ') }} ..."
-rsync -avz -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded \
+HBDIRS="{{ hostvars[host].backup_client_dirs | join(' ') }}"
+{% if hostvars[host].backup_client_databases | default([]) -%}
+HBDIRS="$HBDIRS /var/tmp/backup-databases/"
+{% endif -%}
+logmsg "will backup: $HBDIRS ..."
+RSYNCDIRS=""
+for hbdir in $HBDIRS; do
+    RSYNCDIRS="$RSYNCDIRS {{ host }}:$hbdir"
+done
+rsync -avz -R -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded \
+	{% for incl in hostvars[host].backup_client_include -%}
+    --include='{{incl}}' \
+    {% endfor -%}
     {% for excl in hostvars[host].backup_client_exclude | default([]) -%}
     --exclude='{{excl}}' \
     {% endfor -%}
-    {% for incl in hostvars[host].backup_client_dirs -%}
-    --include='{{incl}}' \
-    {% endfor -%}
-    {% if hostvars[host].backup_client_databases | default([]) -%}
-    --include=/var/tmp/backup-databases/ \
-    {% endif -%}
-    --exclude='/*' \
-    {{ host }}:/ {{ backup_server_path_local }}/{{ host }}/ >>"$LOGFILE" 2>&1
+    $RSYNCDIRS \
+    {{ backup_server_path_local }}/{{ host }}/ >>"$LOGFILE" 2>&1
 RET=$?
 logmsg "Finished backup of {{ host }} @ $(date) with exit code $RET"
 echo "{{ host }}: $RET" >> $STATUSFILE
