@@ -34,6 +34,8 @@
   when: backup_server
 
 - name: add backup server script
+  tags:
+    - backupscript
   template:
     src: backup_server.j2
     dest: /usr/local/sbin/backup_server
@@ -65,6 +67,8 @@
   when: backup_client_dirs | default([])
 
 - name: add backup client command script
+  tags:
+    - backupscript
   template:
     src: backup_client.j2
     dest: /usr/local/sbin/backup_client
