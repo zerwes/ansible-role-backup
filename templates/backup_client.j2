@@ -51,7 +51,9 @@ done
 #  rsync -avz -e'ssh -v'  --delete root@srv:/etc/ root@srv:/.../ /tmp/x/ 2>&1 | grep "Sending command"
 rsync --server --sender -vlogDtprRze.iLsfxC . \
 	{{ backup_client_dirs | join(' ') }} \
-	{% if backup_client_databases -%} /var/tmp/backup-databases/ \{% endif -%}
+	{% if backup_client_databases -%}
+	/var/tmp/backup-databases/ \
+	{% endif -%}
 	2>>"$LOGFILE"
 
 EXITCODE=$((EXITCODE+$?))

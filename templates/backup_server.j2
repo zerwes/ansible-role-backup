@@ -131,7 +131,7 @@ for hbdir in $HBDIRS; do
     RSYNCDIRS="$RSYNCDIRS {{ host }}:$hbdir"
 done
 rsync -avz -R -e'ssh -i {{ backup_server_path_sshkey }}' --delete --delete-excluded \
-	{% for incl in hostvars[host].backup_client_include -%}
+    {% for incl in hostvars[host].backup_client_include | default([]) -%}
     --include='{{incl}}' \
     {% endfor -%}
     {% for excl in hostvars[host].backup_client_exclude | default([]) -%}
