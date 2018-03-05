@@ -85,4 +85,5 @@ backup_client_rotate_monthly_day: 1 # -1=last day of month
 - [ ] mysql dump: make user / pw configurable
 - [ ] check mk local check
 - [ ] test exclude / include args (esp. regarding the "Sending command"
+- [ ] rsync -R and --delete ...
 
