@@ -143,5 +143,6 @@ RET=$?
 logmsg "Finished backup of {{ host }} @ $(date) with exit code $RET"
 echo "{{ host }}: $RET" >> $STATUSFILE
 {% endif %}
-{% endfor %}
+# END host: {{ host }}
 
+{% endfor %}
