@@ -38,11 +38,13 @@ for db in $DATABASES; do
 done
 
 {% if backup_client_exec_pre is defined %}
+# backup_client_exec_pre
 {% for pattern in backup_client_exec_pre %}
-	{{ pattern }} >> "$LOGFILE" 2>&1
-	EXITCODE=$((EXITCODE+$?))
-	echo "EXITCODE=$EXITCODE after '"'{{ pattern }}'"'" >>"$LOGFILE"
+{{ pattern }} >> "$LOGFILE" 2>&1
+EXITCODE=$((EXITCODE+$?))
+echo "EXITCODE=$EXITCODE after '"'{{ pattern }}'"'" >>"$LOGFILE"
 {% endfor %}
+# end of backup_client_exec_pre block
 {% endif %}
 
 
@@ -68,10 +70,12 @@ for serv in $SERVICES; do
 done
 
 {% if backup_client_exec_post is defined %}
+# backup_client_exec_post
 {% for pattern in backup_client_exec_post %}
-	{{ pattern }} >> "$LOGFILE" 2>&1
-	echo "EXITCODE=$EXITCODE after '"'{{ pattern }}'"'" >>"$LOGFILE"
+{{ pattern }} >> "$LOGFILE" 2>&1
+echo "EXITCODE=$EXITCODE after '"'{{ pattern }}'"'" >>"$LOGFILE"
 {% endfor %}
+# end of backup_client_exec_post
 {% endif %}
 
 
