@@ -2,11 +2,8 @@
 
 - name: ensure necessary packages are installed
   apt:
-    name: "{{ item }}"
+    name: "{{ backup_role_packages }}"
     state: present
-  with_items:
-    - ssh
-    - rsync
 
 # backup server tasks
 
@@ -59,12 +56,16 @@
 
 # backup client tasks
 
+# set backup_client_add_ssh_key to true and add backup server ssh key to files
+# or ensure on your own that the backup sarver is able to perform the backup
 - name: add ssh key of backup_server w/ command arg
   authorized_key:
     user: root
     key: "{{ lookup('file', 'id_rsa.pub') }}"
     key_options: command="/usr/local/sbin/backup_client"
-  when: backup_client_dirs | default([])
+  when:
+    - backup_client_dirs | default([])
+    - backup_client_add_ssh_key | default(False)
 
 - name: add backup client command script
   tags:
