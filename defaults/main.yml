@@ -31,6 +31,12 @@ backup_server_cron:
 # backup client #
 #################
 
+# run backup as user
+backup_client_user: root
+
+# add ssh key to backup_client_user
+backup_client_add_ssh_key: true
+
 # list of directories to backup
 backup_client_dirs: []
 
@@ -58,6 +64,5 @@ backup_client_rotatecount_weekly: 0
 backup_client_rotatecount_monthly: 0
 backup_client_rotate_weekly_day: 0 # 0=sunday
 backup_client_rotate_monthly_day: 1 # -1=last day of month
-
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2 smartindent nu
