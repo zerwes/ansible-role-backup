@@ -32,10 +32,13 @@ backup_server_cron:
 #################
 
 # run backup as user
-backup_client_user: root
+backup_client_user: zerobackup
+backup_client_user_sshdir: /home/zerobackup/.ssh
 
 # add ssh key to backup_client_user
 backup_client_add_ssh_key: true
+
+backup_client_ssh_key_options: no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty,command="/usr/local/sbin/backup_client"
 
 # list of directories to backup
 backup_client_dirs: []

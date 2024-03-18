@@ -38,7 +38,7 @@
     dest: /usr/local/sbin/backup_server
     owner: root
     group: root
-    mode: 0755
+    mode: '0750'
   when: backup_server
 
 - name: add cron.d entry
@@ -56,16 +56,30 @@
 
 # backup client tasks
 
+- name: "create user {{ backup_client_user }}"
+  user:
+    name: "{{ backup_client_user }}"
+    password: '!'
+    shell: /bin/bash
+
+- name: "ensure {{ backup_client_user }} has SSH dir"
+  file:
+    dest: "{{ backup_client_user_sshdir }}"
+    state: directory
+    owner: "{{ backup_client_user }}"
+    group: "{{ backup_client_user }}"
+    mode:  '0750'
+
 # set backup_client_add_ssh_key to true and add backup server ssh key to files
-# or ensure on your own that the backup sarver is able to perform the backup
+# or ensure on your own that the backup server is able to perform the backup
 - name: add ssh key of backup_server w/ command arg
   authorized_key:
-    user: root
+    user: "{{ backup_client_user }}"
     key: "{{ lookup('file', 'id_rsa.pub') }}"
-    key_options: command="/usr/local/sbin/backup_client"
+    key_options: "{{ backup_client_ssh_key_options }}"
   when:
     - backup_client_dirs | default([])
-    - backup_client_add_ssh_key | default(False)
+    - backup_client_add_ssh_key | default(true)
 
 - name: add backup client command script
   tags:
@@ -74,8 +88,8 @@
     src: backup_client.j2
     dest: /usr/local/sbin/backup_client
     owner: root
-    group: root
-    mode: 0700
+    group: "{{ backup_client_user }}"
+    mode: '0750'
   when: backup_client_dirs | default([])
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2 smartindent nu
