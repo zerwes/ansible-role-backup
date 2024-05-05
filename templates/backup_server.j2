@@ -7,8 +7,11 @@
 # simple shell script to backup data from several hosts via rsync and ssh
 #
 
-# do NOT use the agent of a user with agent forwarding
-unset SSH_AUTH_SOCK
+# do NOT not run if agent in use
+if [ -n "$SSH_AUTH_SOCK" ]; then
+        echo "refusing to run with ssh agent ..."
+        exit 1
+fi
 
 declare -i RET=0
 declare -r STATUSFILE="{{ backup_server_path_status }}"
@@ -88,6 +91,7 @@ mkdir -p "$LOGDIR"
 ############################
 # host: {{ host }}
 ############################
+mkdir {{ backup_server_path_local }}/{{ host }}
 LOGFILE="$LOGDIR/{{ host }}.log"
 [ -f "$LOGFILE" ] && cp "$LOGFILE" "$LOGFILE.1"
 > "$LOGFILE"

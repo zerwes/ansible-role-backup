@@ -6,76 +6,90 @@
     state: present
 
 # backup server tasks
+- name: backup server tasks
+  block:
+    - name: generate SSH key for root
+      user:
+        name: root
+        generate_ssh_key: yes
+        ssh_key_file: "{{ backup_server_path_sshkey }}"
 
-- name: generate SSH key for root
-  user:
-    name: root
-    generate_ssh_key: yes
-    ssh_key_file: "{{ backup_server_path_sshkey }}"
-  when: backup_server
+    - name: fetch public SSH key to backup client role
+      fetch:
+        src: "{{ backup_server_path_sshkey }}.pub"
+        dest: roles/backup/files/id_rsa.pub
+        flat: yes
 
-- name: fetch public SSH key to backup client role
-  fetch:
-    src: "{{ backup_server_path_sshkey }}.pub"
-    dest: roles/backup/files/id_rsa.pub
-    flat: yes
-  when: backup_server
+    - name: set backup clients as known hosts
+      known_hosts:
+        path: /root/.ssh/known_hosts
+        name: "{{ item }}"
+        key:  "{{ lookup('pipe', 'ssh-keyscan -t ssh-rsa ' + item ) }}"
+      with_items:
+        - "{{ groups['backup_client'] }}"
 
-- name: set backup clients as known hosts
-  known_hosts:
-    path: /root/.ssh/known_hosts
-    name: "{{ item }}"
-    key:  "{{ lookup('pipe', 'ssh-keyscan -t ssh-rsa ' + item ) }}"
-  with_items:
-    - "{{ groups['backup_client'] }}"
-  when: backup_server
+    - name: add backup server script
+      tags:
+        - backupscript
+      template:
+        src: backup_server.j2
+        dest: "{{ backup_server_script }}"
+        owner: root
+        group: root
+        mode: '0750'
 
-- name: add backup server script
-  tags:
-    - backupscript
-  template:
-    src: backup_server.j2
-    dest: /usr/local/sbin/backup_server
-    owner: root
-    group: root
-    mode: 0755
-  when: backup_server
-
-- name: add cron.d entry
-  cron:
-    name: ansible managed backup_server
-    cron_file: "{{ backup_server_cron.cron_file }}"
-    minute: "{{ backup_server_cron.minute }}"
-    hour: "{{ backup_server_cron.hour }}"
-    day: "{{ backup_server_cron.day }}"
-    month: "{{ backup_server_cron.month }}"
-    weekday: "{{ backup_server_cron.weekday }}"
-    user: "{{ backup_server_cron.user }}"
-    job: "{{ backup_server_cron.job }}"
-  when: backup_server
+    - name: add cron.d entry
+      cron:
+        name: ansible managed backup_server
+        cron_file: "{{ backup_server_cron.cron_file }}"
+        minute: "{{ backup_server_cron.minute }}"
+        hour: "{{ backup_server_cron.hour }}"
+        day: "{{ backup_server_cron.day }}"
+        month: "{{ backup_server_cron.month }}"
+        weekday: "{{ backup_server_cron.weekday }}"
+        user: "{{ backup_server_cron.user }}"
+        job: "{{ backup_server_cron.job }}"
+  when: backup_server | bool
 
 # backup client tasks
+- name: backup client tasks
+  block:
+    - name: "create user {{ backup_client_user }}"
+      user:
+        name: "{{ backup_client_user }}"
+        password: '!'
+        shell: /bin/bash
+      when: backup_client_user != 'root'
 
-# set backup_client_add_ssh_key to true and add backup server ssh key to files
-# or ensure on your own that the backup sarver is able to perform the backup
-- name: add ssh key of backup_server w/ command arg
-  authorized_key:
-    user: root
-    key: "{{ lookup('file', 'id_rsa.pub') }}"
-    key_options: command="/usr/local/sbin/backup_client"
-  when:
-    - backup_client_dirs | default([])
-    - backup_client_add_ssh_key | default(False)
+    - name: "ensure {{ backup_client_user }} has SSH dir"
+      file:
+        dest: "{{ backup_client_user_sshdir }}"
+        state: directory
+        owner: "{{ backup_client_user }}"
+        group: "{{ backup_client_user }}"
+        mode:  '0700'
 
-- name: add backup client command script
-  tags:
-    - backupscript
-  template:
-    src: backup_client.j2
-    dest: /usr/local/sbin/backup_client
-    owner: root
-    group: root
-    mode: 0700
-  when: backup_client_dirs | default([])
+    # set backup_client_add_ssh_key to true and add backup server ssh key to files
+    # or ensure on your own that the backup server is able to perform the backup
+    - name: add ssh key of backup_server w/ command arg
+      authorized_key:
+        user: "{{ backup_client_user }}"
+        key: "{{ lookup('file', 'id_rsa.pub') }}"
+        key_options: "{{ backup_client_ssh_key_options }}"
+      when:
+        - backup_client_dirs | default([])
+        - backup_client_add_ssh_key | default(true)
+
+    - name: add backup client command script
+      tags:
+        - backupscript
+      template:
+        src: backup_client.j2
+        dest: /usr/local/sbin/backup_client
+        owner: root
+        group: "{{ backup_client_user }}"
+        mode: '0750'
+      when: backup_client_dirs | default([])
+  when: not (backup_server | bool)
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2 smartindent nu

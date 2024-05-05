@@ -19,7 +19,7 @@ fi
 
 
 [ -f "$LOGFILE" ] && mv "$LOGFILE" "$LOGFILE.old"
->"$LOGFILE"
+date > "$LOGFILE"
 
 
 # stop services
@@ -47,6 +47,69 @@ echo "EXITCODE=$EXITCODE after '"'{{ pattern }}'"'" >>"$LOGFILE"
 # end of backup_client_exec_pre block
 {% endif %}
 
+{% if backup_client_pve is defined and backup_client_pve %}
+# start backup_client_pve block
+
+{% if backup_client_pve_mountpoint not in backup_client_dirs and backup_client_pve_mountpoint ~ '/' not in backup_client_dirs %}
+echo "backup_client_pve_mountpoint {{ backup_client_pve_mountpoint }} is missing from backup_client_dirs ({{ backup_client_dirs | join(';') }})" >>"$LOGFILE"
+exit 10
+{% endif %}
+
+mkdir -p {{ backup_client_pve_mountpoint }}
+declare -r VGNAME=$(pvesh get /storage/local-lvm --noheader --noborder | sed '/^vgname /!d;s/^vgname\s*//g')
+
+{% for pvehost, pvecfg in backup_client_pve.items() | list -%}
+# pvehost {{ pvehost }}
+LCXHOSTNAME=$(pct config {{ pvecfg.lcx_id }} | sed '/^hostname:/!d;s/^hostname: *//g')
+echo "start container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
+if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
+{% for pctexec in pvecfg.lcx_commands | default([]) %}
+	pct exec {{ pvecfg.lcx_id }} -- {{ pctexec }} >> "$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after '"'{{ pctexec }}'"'" >>"$LOGFILE"
+{% endfor %}{# end pctexec #}
+{% if pvecfg.lcx_suspend | default(false) %}
+	pct suspend {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after pct suspend" >>"$LOGFILE"
+{% else %}
+	pct shutdown {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after pct shutdown" >>"$LOGFILE"
+{% endif %}{# end suspend/shutdown #}
+	# handle disks
+	set -e
+	# for now, we just support local-lvm
+	mkdir -p {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}/ >>"$LOGFILE" 2>&1
+	ROOTFS=$(pct config {{ pvecfg.lcx_id }} | sed '/^rootfs: local-lvm:/!d;s/^rootfs: *local-lvm://g;s/,.*$//g')
+	if $(pct listsnapshot {{ pvecfg.lcx_id }} | grep  -q "\-> vm-{{ pvecfg.lcx_id }}-backup_client_pve "); then
+		echo "ERROR: snapshot vm-{{ pvecfg.lcx_id }}-backup_client_pve exists for {{ pvecfg.lcx_id }} $LCXHOSTNAME" >>"$LOGFILE"
+		exit 11
+	fi
+	lvcreate -ay -Ky -n ${ROOTFS}-backup_client_pve -s /dev/${VGNAME}/$ROOTFS >>"$LOGFILE" 2>&1
+	mount -o ro /dev/${VGNAME}/${ROOTFS}-backup_client_pve {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}/ >>"$LOGFILE" 2>&1
+	while read d m; do
+		lvcreate -ay -Ky -n ${d}-backup_client_pve -s /dev/${VGNAME}/$d >>"$LOGFILE" 2>&1
+		mount -o ro /dev/${VGNAME}/${d}-backup_client_pve {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}${m} >>"$LOGFILE" 2>&1
+	done < <(pct config {{ pvecfg.lcx_id }} | sed '/^mp[0-9]: local-lvm:/!d; s/^mp[0-9]: local-lvm://g; s/,mp=/ /g; s/,.*//g')
+	set +e
+{% if pvecfg.lcx_suspend | default(false) %}
+	pct resume {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after pct resume" >>"$LOGFILE"
+{% else %}
+	pct start {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after pct start" >>"$LOGFILE"
+{% endif %}{# end resume/start #}
+else
+	echo "ERROR: lcx_id {{ pvecfg.lcx_id }} is not running" >>"$LOGFILE"
+	exit 12
+fi
+echo "container snap mount {{ pvecfg.lcx_id }} done" >>"$LOGFILE"
+{% endfor -%}{# end for pvehost, pvecfg in backup_client_pve.items() | list -#}
+# end of backup_client_pve block
+{% endif %}
 
 # real backup
 # you can test the sending command by running
@@ -61,10 +124,32 @@ rsync --server --sender -vlogDtprRze.iLsfxC . \
 EXITCODE=$((EXITCODE+$?))
 echo "EXITCODE=$EXITCODE after rsync" >>"$LOGFILE"
 
+{% if backup_client_pve is defined and backup_client_pve %}
+# start cleanup backup_client_pve block
+{% for pvehost, pvecfg in backup_client_pve.items() | list -%}
+# pvehost {{ pvehost }}
+LCXHOSTNAME=$(pct config {{ pvecfg.lcx_id }} | sed '/^hostname:/!d;s/^hostname: *//g')
+echo "start cleanup for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
+# register lvm devices
+LVMS=$(findmnt -o SOURCE -n -R -y -c --mountpoint {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME})
+# umount
+umount -A --recursive {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME} >>"$LOGFILE" 2>&1
+EXITCODE=$((EXITCODE+$?))
+echo "EXITCODE=$EXITCODE after umount for $LCXHOSTNAME" >>"$LOGFILE"
+for LVMDEV in $LVMS; do
+	lvremove -y $LVMDEV >>"$LOGFILE" 2>&1
+	EXITCODE=$((EXITCODE+$?))
+	echo "EXITCODE=$EXITCODE after 'lvremove -y $LVMDEV' for $LCXHOSTNAME" >>"$LOGFILE"
+done
+echo "done cleanup for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
+{% endfor -%}{# end for pvehost, pvecfg in backup_client_pve.items() | list -#}
+# end cleanup backup_client_pve block
+{% endif %}
+
 rm -rf /var/tmp/backup-databases >>"$LOGFILE" 2>&1
 # start services
 for serv in $SERVICES; do
-	service $serv start >> "$LOGFILE" 2>&1
+	service $serv start >>"$LOGFILE" 2>&1
 	EXITCODE=$((EXITCODE+$?))
 	echo "EXITCODE=$EXITCODE after 'service $serv start'" >>"$LOGFILE"
 done

@@ -8,10 +8,11 @@ backup_role_packages:
 # backup server #
 #################
 
-# set this to 'yes' as host var in order to enable the host as backup server
-backup_server: no
+# set this to 'true' as host var in order to enable the host as backup server
+backup_server: false
 
 # paths / files
+backup_server_script: /usr/local/sbin/backup_server
 backup_server_path_local: /srv/backup
 backup_server_path_sshkey: /root/.ssh/id_rsa
 backup_server_path_logdir: /var/log/backup
@@ -24,12 +25,20 @@ backup_server_cron:
   month: "*"
   weekday: "*"
   user: root
-  job: /usr/local/sbin/backup_server > /var/log/backup.log 2>&1
-
+  job: "{{ backup_server_script }} > {{ backup_server_path_logdir }}/backup.log 2>&1"
 
 #################
 # backup client #
 #################
+
+# run backup as user
+backup_client_user: zerobackup
+backup_client_user_sshdir: /home/{{ backup_client_user }}/.ssh
+
+# add ssh key to backup_client_user
+backup_client_add_ssh_key: true
+
+backup_client_ssh_key_options: no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty,command="/usr/local/sbin/backup_client"
 
 # list of directories to backup
 backup_client_dirs: []
@@ -59,5 +68,22 @@ backup_client_rotatecount_monthly: 0
 backup_client_rotate_weekly_day: 0 # 0=sunday
 backup_client_rotate_monthly_day: 1 # -1=last day of month
 
+# if configured, the backup client can be a backup proxy for proxmox lcx containers running on it
+# q: why use this method instead of running the client script on the container itself?
+# a: we can use lvm snapshots so the downtime of the services on the container can be minimized
+backup_client_pve: {}
+# example:
+# backup_client_pve:
+#   cl:  # subaltern host name as identifier
+#     lcx_id: 101  # container id: (TODO implement this for kvm too ...)
+#     lcx_suspend: false  # defaulte: false : if set suspend/resume else shutdown/start will be used (suspend/resume is considered experimental)
+#     lcx_commands:  # commands to run using 'pct exec'
+#       - service apache2 stop
+#       - mkdir -p /var/tmp/backup-databases
+#       - bash -c 'mysqldump --single-transaction nextcloud > /var/tmp/backup-databases/nextcloud.sql'  # hackish way to use shell redirect insight the  vm
+
+# defines where the snapshot LVMs of all VMs listed will be mounted
+# ! should be included in backup_client_dirs !
+backup_client_pve_mountpoint: /mnt
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2 smartindent nu
