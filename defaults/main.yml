@@ -25,8 +25,7 @@ backup_server_cron:
   month: "*"
   weekday: "*"
   user: root
-  job: /usr/local/sbin/backup_server > /var/log/backup.log 2>&1
-
+  job: "{{ backup_server_script }} > {{ backup_server_path_logdir }}/backup.log 2>&1"
 
 #################
 # backup client #
