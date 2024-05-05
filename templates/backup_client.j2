@@ -125,7 +125,7 @@ EXITCODE=$((EXITCODE+$?))
 echo "EXITCODE=$EXITCODE after rsync" >>"$LOGFILE"
 
 {% if backup_client_pve is defined and backup_client_pve %}
-# start clanup backup_client_pve block
+# start cleanup backup_client_pve block
 {% for pvehost, pvecfg in backup_client_pve.items() | list -%}
 # pvehost {{ pvehost }}
 LCXHOSTNAME=$(pct config {{ pvecfg.lcx_id }} | sed '/^hostname:/!d;s/^hostname: *//g'
