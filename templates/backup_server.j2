@@ -91,7 +91,7 @@ mkdir -p "$LOGDIR"
 ############################
 # host: {{ host }}
 ############################
-mkdir {{ backup_server_path_local }}/{{ host }}
+mkdir -p {{ backup_server_path_local }}/{{ host }}
 LOGFILE="$LOGDIR/{{ host }}.log"
 [ -f "$LOGFILE" ] && cp "$LOGFILE" "$LOGFILE.1"
 > "$LOGFILE"
