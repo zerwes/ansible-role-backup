@@ -63,7 +63,7 @@ declare -r VGNAME=$(pvesh get /storage/local-lvm --noheader --noborder | sed '/^
 LCXHOSTNAME=$(pct config {{ pvecfg.lcx_id }} | sed '/^hostname:/!d;s/^hostname: *//g'
 echo "start container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
 if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
-{% for pctexec in pvecfg.lcx_commands %}
+{% for pctexec in pvecfg.lcx_commands | default([]) %}
 	pct exec {{ pvecfg.lcx_id }} -- {{ pctexec }} >> "$LOGFILE" 2>&1
 	EXITCODE=$((EXITCODE+$?))
 	echo "EXITCODE=$EXITCODE after '"'{{ pctexec }}'"'" >>"$LOGFILE"
