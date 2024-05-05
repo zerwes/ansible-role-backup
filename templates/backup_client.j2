@@ -50,8 +50,8 @@ echo "EXITCODE=$EXITCODE after '"'{{ pattern }}'"'" >>"$LOGFILE"
 {% if backup_client_pve is defined and backup_client_pve %}
 # start backup_client_pve block
 
-{% if backup_client_pve_mountpoint not in backup_client_dirs %}
-echo "backup_client_pve_mountpoint {{ backup_client_pve_mountpoint }} is missing from backup_client_dirs" >>"$LOGFILE"
+{% if backup_client_pve_mountpoint not in backup_client_dirs and backup_client_pve_mountpoint ~ '/' not in backup_client_dirs %}
+echo "backup_client_pve_mountpoint {{ backup_client_pve_mountpoint }} is missing from backup_client_dirs ({{ backup_client_dirs | join(';') }})" >>"$LOGFILE"
 exit 10
 {% endif %}
 
