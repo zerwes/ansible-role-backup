@@ -71,6 +71,8 @@ backup_client_rotate_monthly_day: 1 # -1=last day of month
 # if configured, the backup client can be a backup proxy for proxmox lcx containers running on it
 # q: why use this method instead of running the client script on the container itself?
 # a: we can use lvm snapshots so the downtime of the services on the container can be minimized
+# if you like to make use of this, ensure the backup_client_user has the right to perform the required tasks
+# or use ackup_client_user: root + backup_client_user_sshdir: /root/.ssh
 backup_client_pve: {}
 # example:
 # backup_client_pve:
