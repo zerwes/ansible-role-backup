@@ -67,7 +67,7 @@
         state: directory
         owner: "{{ backup_client_user }}"
         group: "{{ backup_client_user }}"
-        mode:  '0750'
+        mode:  '0700'
 
     # set backup_client_add_ssh_key to true and add backup server ssh key to files
     # or ensure on your own that the backup server is able to perform the backup
