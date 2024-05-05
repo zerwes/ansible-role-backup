@@ -71,7 +71,6 @@ backup_client_rotate_monthly_day: 1 # -1=last day of month
 # if configured, the backup client can be a backup proxy for proxmox lcx containers running on it
 # q: why use this method instead of running the client script on the container itself?
 # a: we can use lvm snapshots so the downtime of the services on the container can be minimized
-backup_client_pve_mountpoint: /mnt  # defines where the snapshot LVMs of all VMs listed will be mounted
 backup_client_pve: {}
 # example:
 # backup_client_pve:
@@ -82,5 +81,9 @@ backup_client_pve: {}
 #       - service apache2 stop
 #       - mkdir -p /var/tmp/backup-databases
 #       - bash -c 'mysqldump --single-transaction nextcloud > /var/tmp/backup-databases/nextcloud.sql'  # hackish way to use shell redirect insight the  vm
+
+# defines where the snapshot LVMs of all VMs listed will be mounted
+# ! should be included in backup_client_dirs !
+backup_client_pve_mountpoint: /mnt
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2 smartindent nu
