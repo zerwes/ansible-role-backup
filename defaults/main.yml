@@ -8,8 +8,8 @@ backup_role_packages:
 # backup server #
 #################
 
-# set this to 'yes' as host var in order to enable the host as backup server
-backup_server: no
+# set this to 'true' as host var in order to enable the host as backup server
+backup_server: false
 
 # paths / files
 backup_server_path_local: /srv/backup
