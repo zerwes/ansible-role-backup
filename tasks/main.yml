@@ -33,7 +33,7 @@
         - backupscript
       template:
         src: backup_server.j2
-        dest: /usr/local/sbin/backup_server
+        dest: "{{ backup_server_script }}"
         owner: root
         group: root
         mode: '0750'

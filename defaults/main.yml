@@ -12,6 +12,7 @@ backup_role_packages:
 backup_server: false
 
 # paths / files
+backup_server_script: /usr/local/sbin/backup_server
 backup_server_path_local: /srv/backup
 backup_server_path_sshkey: /root/.ssh/id_rsa
 backup_server_path_logdir: /var/log/backup
