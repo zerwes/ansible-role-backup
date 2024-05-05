@@ -19,7 +19,7 @@ fi
 
 
 [ -f "$LOGFILE" ] && mv "$LOGFILE" "$LOGFILE.old"
-: > "$LOGFILE"
+date > "$LOGFILE"
 
 
 # stop services
