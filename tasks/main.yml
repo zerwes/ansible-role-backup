@@ -37,6 +37,7 @@
         owner: root
         group: root
         mode: '0750'
+        validate: bash -n %s
 
     - name: add cron.d entry
       cron:
@@ -89,6 +90,7 @@
         owner: root
         group: "{{ backup_client_user }}"
         mode: '0750'
+        validate: bash -n %s
       when: backup_client_dirs | default([])
   when: not (backup_server | bool)
 
