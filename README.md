@@ -4,6 +4,8 @@
 
 configure hosts as backup client / server and run a scheduled backup from the server using rsync+ssh
 
+optional: handle lxc container on proxmox for backup and use lvm snapshots
+
 ## Steps:
 
 ### hosts file
@@ -78,6 +80,17 @@ backup_client_rotatecount_weekly: 0
 backup_client_rotatecount_monthly: 0
 backup_client_rotate_weekly_day: 0 # 0=sunday
 backup_client_rotate_monthly_day: 1 # -1=last day of month
+```
+
+optional: configure client to backup multiple lxc containers
+
+```
+backup_client_pve: {...}
+# if configured, the backup client can be a backup proxy for proxmox lcx containers running on it
+# q: why use this method instead of running the client script on the container itself?
+# a: we can use lvm snapshots so the downtime of the services on the container can be minimized
+# if you like to make use of this, ensure the backup_client_user has the right to perform the required tasks
+# or use ackup_client_user: root + backup_client_user_sshdir: /root/.ssh
 ```
 
 # TODOs / FIXMEs
