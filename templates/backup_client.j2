@@ -59,7 +59,7 @@ mkdir -p {{ backup_client_pve_mountpoint }}
 declare -r VGNAME=$(pvesh get /storage/local-lvm --noheader --noborder | sed '/^vgname /!d;s/^vgname\s*//g')
 
 # cleanup old snapshot LVMs nonintrusive
-for LVP in $(lvdisplay | grep 'LV Path' | grep _-backup_client_pve_ | awk '{print $3}'); do
+for LVP in $(lvdisplay | grep 'LV Path' | grep -e '-backup_client_pve$' | awk '{print $3}'); do
 	lvremove $LVP
 done
 
