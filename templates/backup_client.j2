@@ -111,11 +111,28 @@ if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
 		pct resume {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
 		EXITCODE=$((EXITCODE+$?))
 		echo "EXITCODE=$EXITCODE after pct resume" >>"$LOGFILE"
+		sleep 5
+		if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" != "running" ]; then
+			echo "WARNING: retrying resume for container {{ pvecfg.lcx_id }}" >>"$LOGFILE"
+			pct resume {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+			EXITCODE=$((EXITCODE+$?))
+			echo "EXITCODE=$EXITCODE after pct resume" >>"$LOGFILE"
+			sleep 5
+		fi
 	{% else %}
 		pct start {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
 		EXITCODE=$((EXITCODE+$?))
 		echo "EXITCODE=$EXITCODE after pct start" >>"$LOGFILE"
+		sleep 5
+		if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" != "running" ]; then
+			echo "WARNING: retrying start for container {{ pvecfg.lcx_id }}" >>"$LOGFILE"
+			pct start {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+			EXITCODE=$((EXITCODE+$?))
+			echo "EXITCODE=$EXITCODE after pct start" >>"$LOGFILE"
+			sleep 5
+		fi
 	{% endif %}{# end resume/start #}
+		pct status {{ pvecfg.lcx_id }} >>"$LOGFILE" 2>&1
 	fi # end checks and prepare container
 else
 	echo "ERROR: lcx_id {{ pvecfg.lcx_id }} is not running" >>"$LOGFILE"
