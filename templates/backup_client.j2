@@ -66,54 +66,63 @@ done
 {% for pvehost, pvecfg in backup_client_pve.items() | list -%}
 # pvehost {{ pvehost }}
 LCXHOSTNAME=$(pct config {{ pvecfg.lcx_id }} | sed '/^hostname:/!d;s/^hostname: *//g')
-echo "start container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
+echo "start backup tasks for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
 if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
 	ROOTFS=$(pct config {{ pvecfg.lcx_id }} | sed '/^rootfs: local-lvm:/!d;s/^rootfs: *local-lvm://g;s/,.*$//g')
 	if [ -z "$ROOTFS" ]; then
 		echo "unable to deterim ROOTFS for $LCXHOSTNAME ({{ pvecfg.lcx_id }})" >>"$LOGFILE"
+		EXITCODE=$((EXITCODE+11))
+		{% if backup_client_pve_lcx_exitonerror %}
 		exit 11
-	fi
-	if $(pct listsnapshot {{ pvecfg.lcx_id }} | grep  -q "\-> vm-{{ pvecfg.lcx_id }}-backup_client_pve "); then
+		{% endif %}
+	elif $(pct listsnapshot {{ pvecfg.lcx_id }} | grep  -q "\-> vm-{{ pvecfg.lcx_id }}-backup_client_pve "); then
 		echo "ERROR: snapshot vm-{{ pvecfg.lcx_id }}-backup_client_pve exists for {{ pvecfg.lcx_id }} $LCXHOSTNAME" >>"$LOGFILE"
+		EXITCODE=$((EXITCODE+11))
+		{% if backup_client_pve_lcx_exitonerror %}
 		exit 11
-	fi
-{% for pctexec in pvecfg.lcx_commands | default([]) %}
-	pct exec {{ pvecfg.lcx_id }} -- {{ pctexec }} >> "$LOGFILE" 2>&1
-	EXITCODE=$((EXITCODE+$?))
-	echo "EXITCODE=$EXITCODE after '"'{{ pctexec }}'"'" >>"$LOGFILE"
-{% endfor %}{# end pctexec #}
-{% if pvecfg.lcx_suspend | default(false) %}
-	pct suspend {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
-	EXITCODE=$((EXITCODE+$?))
-	echo "EXITCODE=$EXITCODE after pct suspend" >>"$LOGFILE"
-{% else %}
-	pct shutdown {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
-	EXITCODE=$((EXITCODE+$?))
-	echo "EXITCODE=$EXITCODE after pct shutdown" >>"$LOGFILE"
-{% endif %}{# end suspend/shutdown #}
-	# handle disks
-	set -e
-	# for now, we just support local-lvm
-	mkdir -p {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}/ >>"$LOGFILE" 2>&1
-	lvcreate -ay -Ky -n ${ROOTFS}-backup_client_pve -s /dev/${VGNAME}/$ROOTFS >>"$LOGFILE" 2>&1
-	mount -o ro /dev/${VGNAME}/${ROOTFS}-backup_client_pve {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}/ >>"$LOGFILE" 2>&1
-	while read d m; do
-		lvcreate -ay -Ky -n ${d}-backup_client_pve -s /dev/${VGNAME}/$d >>"$LOGFILE" 2>&1
-		mount -o ro /dev/${VGNAME}/${d}-backup_client_pve {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}${m} >>"$LOGFILE" 2>&1
-	done < <(pct config {{ pvecfg.lcx_id }} | sed '/^mp[0-9]: local-lvm:/!d; s/^mp[0-9]: local-lvm://g; s/,mp=/ /g; s/,.*//g')
-	set +e
-{% if pvecfg.lcx_suspend | default(false) %}
-	pct resume {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
-	EXITCODE=$((EXITCODE+$?))
-	echo "EXITCODE=$EXITCODE after pct resume" >>"$LOGFILE"
-{% else %}
-	pct start {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
-	EXITCODE=$((EXITCODE+$?))
-	echo "EXITCODE=$EXITCODE after pct start" >>"$LOGFILE"
-{% endif %}{# end resume/start #}
+		{% endif %}
+	else
+	{% for pctexec in pvecfg.lcx_commands | default([]) %}
+		pct exec {{ pvecfg.lcx_id }} -- {{ pctexec }} >> "$LOGFILE" 2>&1
+		EXITCODE=$((EXITCODE+$?))
+		echo "EXITCODE=$EXITCODE after '"'{{ pctexec }}'"'" >>"$LOGFILE"
+	{% endfor %}{# end pctexec #}
+	{% if pvecfg.lcx_suspend | default(false) %}
+		pct suspend {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+		EXITCODE=$((EXITCODE+$?))
+		echo "EXITCODE=$EXITCODE after pct suspend" >>"$LOGFILE"
+	{% else %}
+		pct shutdown {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+		EXITCODE=$((EXITCODE+$?))
+		echo "EXITCODE=$EXITCODE after pct shutdown" >>"$LOGFILE"
+	{% endif %}{# end suspend/shutdown #}
+		# handle disks
+		set -e
+		# for now, we just support local-lvm
+		mkdir -p {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}/ >>"$LOGFILE" 2>&1
+		lvcreate -ay -Ky -n ${ROOTFS}-backup_client_pve -s /dev/${VGNAME}/$ROOTFS >>"$LOGFILE" 2>&1
+		mount -o ro /dev/${VGNAME}/${ROOTFS}-backup_client_pve {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}/ >>"$LOGFILE" 2>&1
+		while read d m; do
+			lvcreate -ay -Ky -n ${d}-backup_client_pve -s /dev/${VGNAME}/$d >>"$LOGFILE" 2>&1
+			mount -o ro /dev/${VGNAME}/${d}-backup_client_pve {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME}${m} >>"$LOGFILE" 2>&1
+		done < <(pct config {{ pvecfg.lcx_id }} | sed '/^mp[0-9]: local-lvm:/!d; s/^mp[0-9]: local-lvm://g; s/,mp=/ /g; s/,.*//g')
+		set +e
+	{% if pvecfg.lcx_suspend | default(false) %}
+		pct resume {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+		EXITCODE=$((EXITCODE+$?))
+		echo "EXITCODE=$EXITCODE after pct resume" >>"$LOGFILE"
+	{% else %}
+		pct start {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
+		EXITCODE=$((EXITCODE+$?))
+		echo "EXITCODE=$EXITCODE after pct start" >>"$LOGFILE"
+	{% endif %}{# end resume/start #}
+	fi # end checks and prepare container
 else
 	echo "ERROR: lcx_id {{ pvecfg.lcx_id }} is not running" >>"$LOGFILE"
+	EXITCODE=$((EXITCODE+12))
+	{% if backup_client_pve_lcx_exitonerror %}
 	exit 12
+	{% endif %}
 fi
 echo "container snap mount {{ pvecfg.lcx_id }} done" >>"$LOGFILE"
 {% endfor -%}{# end for pvehost, pvecfg in backup_client_pve.items() | list -#}
