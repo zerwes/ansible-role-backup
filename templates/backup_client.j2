@@ -17,8 +17,12 @@ if [ -z "${SSH_CLIENT}" -o -z "${SSH_CONNECTION}" -o -z "${SSH_ORIGINAL_COMMAND}
         exit 1
 fi
 
-
-[ -f "$LOGFILE" ] && mv "$LOGFILE" "$LOGFILE.old"
+declare -i LOGIDX={{ backup_client_keep_logs | int }}
+while [ $LOGIDX -gt 1 ]; do
+	declare -i BLOGIDX=$((LOGIDX--))
+	[ -f "$LOGFILE.$LOGIDX" ] && mv "$LOGFILE.$LOGIDX" "$LOGFILE.$BLOGIDX"
+done
+[ -f "$LOGFILE" ] && mv "$LOGFILE" "$LOGFILE.1"
 date > "$LOGFILE"
 
 

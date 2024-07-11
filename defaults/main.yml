@@ -61,6 +61,10 @@ backup_client_databases: []
 # optional: list of commands to run after backup
 # backup_client_exec_post
 
+# number of logfiles to keep on the client
+# we always keep at least one backup log
+backup_client_keep_logs: 5
+
 # rotate backups
 backup_client_rotatecount_daily: 0
 backup_client_rotatecount_weekly: 0
