@@ -76,16 +76,22 @@ if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
 	if [ -z "$ROOTFS" ]; then
 		echo "unable to deterim ROOTFS for $LCXHOSTNAME ({{ pvecfg.lcx_id }})" >>"$LOGFILE"
 		EXITCODE=$((EXITCODE+11))
-		{% if backup_client_pve_lcx_exitonerror %}exit 11{% endif -%}
+		{% if backup_client_pve_lcx_exitonerror | bool -%}
+		exit 11
+		{% endif -%}
 	elif $(pct listsnapshot {{ pvecfg.lcx_id }} | grep  -q "\-> vm-{{ pvecfg.lcx_id }}-backup_client_pve "); then
 		echo "ERROR: snapshot vm-{{ pvecfg.lcx_id }}-backup_client_pve exists for {{ pvecfg.lcx_id }} $LCXHOSTNAME" >>"$LOGFILE"
 		EXITCODE=$((EXITCODE+11))
-		{% if backup_client_pve_lcx_exitonerror %}exit 11{% endif -%}
+		{% if backup_client_pve_lcx_exitonerror | bool -%}
+		exit 11
+		{% endif -%}
 	elif $(lvdisplay | grep 'LV Path' | grep -qe 'vm-{{ pvecfg.lcx_id }}-disk-[0-9]\+-backup_client_pve$'); then
 		lvdisplay | grep 'LV Path' | grep -e 'vm-{{ pvecfg.lcx_id }}-disk-[0-9]\+-backup_client_pve$' >>"$LOGFILE" 2>&1
 		echo "ERROR: found existing backup_client_pve LV for {{ pvecfg.lcx_id }} $LCXHOSTNAME" >>"$LOGFILE"
 		EXITCODE=$((EXITCODE+11))
-		{% if backup_client_pve_lcx_exitonerror %}exit 11{% endif -%}
+		{% if backup_client_pve_lcx_exitonerror | bool -%}
+		exit 11
+		{% endif -%}
 	else
 		{% for pctexec in pvecfg.lcx_commands | default([]) -%}
 		pct exec {{ pvecfg.lcx_id }} -- {{ pctexec }} >> "$LOGFILE" 2>&1
@@ -142,7 +148,9 @@ if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
 else
 	echo "ERROR: lcx_id {{ pvecfg.lcx_id }} is not running" >>"$LOGFILE"
 	EXITCODE=$((EXITCODE+12))
-	{% if backup_client_pve_lcx_exitonerror %}exit 12{% endif -%}
+	{% if backup_client_pve_lcx_exitonerror | bool -%}
+	exit 12
+	{% endif -%}
 fi
 echo "container snap mount {{ pvecfg.lcx_id }} done" >>"$LOGFILE"
 {% endfor -%}{# end for pvehost, pvecfg in backup_client_pve.items() | list -#}
