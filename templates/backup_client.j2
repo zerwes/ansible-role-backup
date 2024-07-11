@@ -91,6 +91,7 @@ if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
 		pct exec {{ pvecfg.lcx_id }} -- {{ pctexec }} >> "$LOGFILE" 2>&1
 		EXITCODE=$((EXITCODE+$?))
 		echo "EXITCODE=$EXITCODE after '"'{{ pctexec }}'"'" >>"$LOGFILE"
+		sleep 1
 		{% endfor %}{# end pctexec -#}
 		{% if pvecfg.lcx_suspend | default(false) -%}
 		pct suspend {{ pvecfg.lcx_id }} >> "$LOGFILE" 2>&1
@@ -101,6 +102,7 @@ if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
 		EXITCODE=$((EXITCODE+$?))
 		echo "EXITCODE=$EXITCODE after pct shutdown" >>"$LOGFILE"
 		{% endif %}{# end suspend/shutdown -#}
+		sleep 10
 		# handle disks
 		set -e
 		# for now, we just support local-lvm
@@ -144,7 +146,9 @@ else
 	EXITCODE=$((EXITCODE+12))
 	{%+ if backup_client_pve_lcx_exitonerror | bool %}exit 12{% else %}# soft error{% endif +%}
 fi
+sleep 5
 echo "container snap mount {{ pvecfg.lcx_id }} done" >>"$LOGFILE"
+
 {% endfor -%}{# end for pvehost, pvecfg in backup_client_pve.items() | list -#}
 # end of backup_client_pve block
 {% endif %}
@@ -174,12 +178,16 @@ LVMS=$(findmnt -o SOURCE -n -R -y -c --mountpoint {{ backup_client_pve_mountpoin
 umount -A --recursive {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME} >>"$LOGFILE" 2>&1
 EXITCODE=$((EXITCODE+$?))
 echo "EXITCODE=$EXITCODE after umount for $LCXHOSTNAME" >>"$LOGFILE"
+sleep 5
 for LVMDEV in $LVMS; do
 	lvremove -y $LVMDEV >>"$LOGFILE" 2>&1
 	EXITCODE=$((EXITCODE+$?))
 	echo "EXITCODE=$EXITCODE after 'lvremove -y $LVMDEV' for $LCXHOSTNAME" >>"$LOGFILE"
+	sleep 5
 done
 echo "done cleanup for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
+sleep 5
+
 {% endfor -%}{# end for pvehost, pvecfg in backup_client_pve.items() | list -#}
 # end cleanup backup_client_pve block
 {% endif %}
