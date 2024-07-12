@@ -175,16 +175,18 @@ echo "start cleanup for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGF
 # register lvm devices
 LVMS=$(findmnt -o SOURCE -n -R -y -c --mountpoint {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME})
 # umount
-umount -A --recursive {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME} >>"$LOGFILE" 2>&1
-EXITCODE=$((EXITCODE+$?))
-echo "EXITCODE=$EXITCODE after umount for $LCXHOSTNAME" >>"$LOGFILE"
-sleep 5
-for LVMDEV in $LVMS; do
-	lvremove -y $LVMDEV >>"$LOGFILE" 2>&1
+if [ -n "$LVMS"]; then
+	umount -A --recursive {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME} >>"$LOGFILE" 2>&1
 	EXITCODE=$((EXITCODE+$?))
-	echo "EXITCODE=$EXITCODE after 'lvremove -y $LVMDEV' for $LCXHOSTNAME" >>"$LOGFILE"
+	echo "EXITCODE=$EXITCODE after umount for $LCXHOSTNAME" >>"$LOGFILE"
 	sleep 5
-done
+	for LVMDEV in $LVMS; do
+		lvremove -y $LVMDEV >>"$LOGFILE" 2>&1
+		EXITCODE=$((EXITCODE+$?))
+		echo "EXITCODE=$EXITCODE after 'lvremove -y $LVMDEV' for $LCXHOSTNAME" >>"$LOGFILE"
+		sleep 5
+	done
+fi
 echo "done cleanup for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
 sleep 5
 
