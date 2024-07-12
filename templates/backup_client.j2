@@ -70,6 +70,7 @@ done
 {% for pvehost, pvecfg in backup_client_pve.items() | list -%}
 # pvehost {{ pvehost }}
 LCXHOSTNAME=$(pct config {{ pvecfg.lcx_id }} | sed '/^hostname:/!d;s/^hostname: *//g')
+echo "" >>"$LOGFILE"
 echo "start backup tasks for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
 if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
 	ROOTFS=$(pct config {{ pvecfg.lcx_id }} | sed '/^rootfs: local-lvm:/!d;s/^rootfs: *local-lvm://g;s/,.*$//g')
@@ -171,6 +172,7 @@ echo "EXITCODE=$EXITCODE after rsync" >>"$LOGFILE"
 {% for pvehost, pvecfg in backup_client_pve.items() | list -%}
 # pvehost {{ pvehost }}
 LCXHOSTNAME=$(pct config {{ pvecfg.lcx_id }} | sed '/^hostname:/!d;s/^hostname: *//g')
+echo "" >>"$LOGFILE"
 echo "start cleanup for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGFILE"
 # register lvm devices
 LVMS=$(findmnt -o SOURCE -n -R -y -c --mountpoint {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME})
@@ -194,6 +196,7 @@ sleep 5
 # end cleanup backup_client_pve block
 {% endif %}
 
+echo "" >>"$LOGFILE"
 rm -rf /var/tmp/backup-databases >>"$LOGFILE" 2>&1
 # start services
 for serv in $SERVICES; do
