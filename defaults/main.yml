@@ -16,6 +16,7 @@ backup_server_script: /usr/local/sbin/backup_server
 backup_server_path_local: /srv/backup
 backup_server_path_sshkey: /root/.ssh/id_rsa
 backup_server_path_logdir: /var/log/backup
+backup_server_keep_logs: 5
 backup_server_path_status: /var/tmp/backup.status
 backup_server_cron:
   cron_file: backupserver

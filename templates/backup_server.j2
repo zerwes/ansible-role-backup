@@ -93,6 +93,11 @@ mkdir -p "$LOGDIR"
 ############################
 mkdir -p {{ backup_server_path_local }}/{{ host }}
 LOGFILE="$LOGDIR/{{ host }}.log"
+declare -i LOGIDX={{ backup_server_keep_logs | int }}
+while [ $LOGIDX -gt 1 ]; do
+        declare -i BLOGIDX=$((LOGIDX--))
+        [ -f "$LOGFILE.$LOGIDX" ] && mv "$LOGFILE.$LOGIDX" "$LOGFILE.$BLOGIDX"
+done
 [ -f "$LOGFILE" ] && cp "$LOGFILE" "$LOGFILE.1"
 > "$LOGFILE"
 
