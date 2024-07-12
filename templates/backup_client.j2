@@ -177,7 +177,7 @@ echo "start cleanup for container {{ pvecfg.lcx_id }} $LCXHOSTNAME ..." >>"$LOGF
 # register lvm devices
 LVMS=$(findmnt -o SOURCE -n -R -y -c --mountpoint {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME})
 # umount
-if [ -n "$LVMS"]; then
+if [ -n "$LVMS" ]; then
 	umount -A --recursive {{ backup_client_pve_mountpoint }}/${LCXHOSTNAME} >>"$LOGFILE" 2>&1
 	EXITCODE=$((EXITCODE+$?))
 	echo "EXITCODE=$EXITCODE after umount for $LCXHOSTNAME" >>"$LOGFILE"
