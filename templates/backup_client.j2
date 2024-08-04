@@ -91,7 +91,7 @@ if [ "$(pct status {{ pvecfg.lcx_id }} | awk '{print $2}')" = "running" ]; then
 		{% for pctexec in pvecfg.lcx_commands | default([]) -%}
 		pct exec {{ pvecfg.lcx_id }} -- {{ pctexec }} >> "$LOGFILE" 2>&1
 		EXITCODE=$((EXITCODE+$?))
-		echo "EXITCODE=$EXITCODE after '"'{{ pctexec }}'"'" >>"$LOGFILE"
+		echo "EXITCODE=$EXITCODE after 'pct exec {{ pvecfg.lcx_id }} -- {{ pctexec.replace('"', '') }}'" >>"$LOGFILE"
 		sleep 1
 		{% endfor %}{# end pctexec -#}
 		{% if pvecfg.lcx_suspend | default(false) -%}
